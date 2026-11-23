@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E1512">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<title>Training Log</title>
+<style>
+:root{color-scheme:dark;--paper:#0E1512;--card:#161F1B;--ink:#E6EFEA;--mute:#8FA39A;--line:#26332D;--field:#1B2621;--accent:#3DDC84;--ai:#06210F;--squat:#6AA9E6;--bench:#F0766B;--dead:#D9B35A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header,main{max-width:1100px;margin:0 auto;padding:0 12px}
+main{padding-bottom:80px}
+h1{font:700 28px/1 'Arial Narrow',system-ui,sans-serif;margin:16px 0 12px}
+h2{font:600 20px/1.1 'Arial Narrow',system-ui,sans-serif;margin:0 0 10px}
+h3{font:600 17px/1.1 'Arial Narrow',system-ui,sans-serif;margin:20px 0 8px}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 14px 9px;font:600 16px system-ui;color:var(--mute);white-space:nowrap}
+nav button[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+section{padding-top:16px}section[hidden]{display:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
+input,select{font:500 16px system-ui;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:7px 9px;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent)}
+input.auto{background:transparent;border-color:transparent;color:var(--mute)}
+input[type=checkbox]{accent-color:var(--accent);width:20px;height:20px}
+.check{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+button{font:600 15px system-ui;cursor:pointer}
+button.go{background:var(--accent);color:var(--ai);border:0;border-radius:4px;padding:10px 18px}
+button.quiet{background:none;border:1px solid var(--line);border-radius:4px;padding:8px 12px;color:var(--ink)}
+button.danger{background:none;border:1px solid #8E2C25;color:#F0766B;border-radius:4px;padding:8px 12px}
+button.x{background:none;border:0;color:var(--mute);font-size:20px;padding:0 8px}
+.hint{color:var(--mute);font-size:13px;margin:6px 0 0}.empty{color:var(--mute);padding:14px 0}
+.big{font:700 40px/1 'Arial Narrow',system-ui,sans-serif}.unit{color:var(--mute);margin-left:4px}
+table{border-collapse:collapse;width:max-content;min-width:100%}
+th{font:600 12px system-ui;color:var(--mute);text-align:left;padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:3px;border-bottom:1px solid var(--line)}td input:not([type=checkbox]){width:100%;min-width:56px}
+input[data-w=m]{min-width:150px!important}input[data-w=v]{min-width:120px!important}input[data-w=n]{min-width:170px!important}
+input[data-w=l],input[data-w=a]{min-width:76px!important}input[data-w=est]{min-width:104px!important}input[data-w=x]{min-width:72px!important}
+.scroll{overflow-x:auto;padding:6px}
+.scroll td:first-child,.scroll th:first-child{position:sticky;left:0;background:var(--card);z-index:1}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.link{cursor:pointer}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.seg button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:4px;padding:6px 12px}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--ai);border-color:var(--accent)}
+.seg small{opacity:.7;margin-left:6px;font-weight:500}
+.week{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin:12px 0}
+.week .title input{font:700 24px 'Arial Narrow',system-ui,sans-serif;background:transparent;border-color:transparent;width:min(320px,80vw)}
+.e1{display:flex;gap:14px;flex-wrap:wrap}.e1 div{border-left:4px solid var(--accent);padding-left:9px}
+.e1 b{display:block;font:700 28px/1 'Arial Narrow',system-ui,sans-serif}.e1 span{font-size:12px;color:var(--mute)}
+.day-title input{font:600 19px system-ui;background:transparent;border-color:transparent;width:100%}
+.sub{font:600 13px system-ui;color:var(--mute);margin:14px 0 4px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.tile{background:var(--card);border:1px solid var(--line);border-left:5px solid;border-radius:6px;padding:10px 12px}
+.tile b{font:700 32px/1 'Arial Narrow',system-ui,sans-serif}.tile span{display:block;font-size:13px;color:var(--mute)}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}@media(max-width:760px){.three{grid-template-columns:1fr}}
+.leg span{margin-right:12px;font-size:13px;color:var(--mute)}.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--card);border:1px solid var(--line);padding:10px 14px;border-radius:6px;display:none;z-index:9;max-width:90vw}
+#toast.err{background:#8E2C25;border-color:#8E2C25}
+</style></head><body>
+<header><h1>Training log</h1>
+<nav id="tabs"><button data-tab="log">Daily log</button><button data-tab="train">Training</button><button data-tab="prog">Program</button><button data-tab="progress">Progress</button></nav></header>
+<main>
+<section id="tab-log" hidden></section><section id="tab-train" hidden></section>
+<section id="tab-prog" hidden></section><section id="tab-progress" hidden></section>
+</main>
+<div id="toast" role="status"></div>
+<script>
+const $=s=>document.querySelector(s),KEY='tt.v1';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const n=v=>{const x=parseFloat(v);return isFinite(x)?x:null};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const COL={squat:'#6AA9E6',bench:'#F0766B',deadlift:'#D9B35A'},LIFTS=['squat','bench','deadlift'];
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+
+/* ---------- storage ---------- */
+let DB;try{DB=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+DB=DB||{v:2,comp:null,nut:{},mesos:[]};
+if(DB.estF==null)DB.estF=0.97*0.94;
+let tm;const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB));return true}catch(e){toast('Could not save (storage full or blocked). Export a backup.',1);return false}};
+const save=()=>{clearTimeout(tm);tm=setTimeout(persist,200)};
+addEventListener('pagehide',()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}});
+navigator.storage?.persist?.();
+let tt;function toast(m,err){const t=$('#toast');t.textContent=m;t.className=err?'err':'';t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',err?6000:2500)}
+
+/* ---------- dates ---------- */
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const addD=(s,k)=>{const[p,q,r]=s.split('-').map(Number);return new Date(Date.UTC(p,q-1,r+k)).toISOString().slice(0,10)};
+const daysB=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/864e5);
+const fdm=ms=>new Date(ms).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+const fd=s=>s?fdm(Date.parse(s+'T00:00')):'';
+
+/* ---------- calculations ---------- */
+// RPE table: Q[k], k = 2*(reps-1 + 10-RPE), reps 1-10, RPE in 0.5 steps
+const Q=[1,.978,.955,.939,.922,.907,.892,.878,.863,.85,.837,.824,.811,.799,.786,.774,.762,.751,.739,.723,.707,.694,.68,.667,.653,.64];
+const mr=(x,m=2.5)=>Math.round(x/m)*m;
+function pct(rpe,reps){rpe=n(rpe);reps=n(reps);if(rpe==null||reps==null||reps<1||reps>10)return null;const k=2*(reps-1+10-rpe);return Number.isInteger(k)&&k>=0?(Q[k]??null):null}
+const est=(l,rpe,reps)=>{const p=pct(rpe,reps);return p&&l?mr(l/p):null};
+// "5-6" -> [5,6]; "90-95" -> [90,95]; "7" -> [7]
+const nums=t=>String(t??'').replace(/[^0-9.\-]/g,'').split('-').map(parseFloat).filter(isFinite);
+const avgN=t=>{const a=nums(t);return a.length?a.reduce((x,y)=>x+y,0)/a.length:null};
+const liftOf=m=>{m=String(m||'').toLowerCase();return m.includes('squat')?'squat':m.includes('bench')?'bench':m.includes('deadlift')?'deadlift':null};
+
+function calcWeek(w){
+  const out={days:[],e:{},vol:0,it:null},best={},its=[];
+  w.days.forEach(d=>{let top=null;const rows=[];
+    d.main.forEach(r=>{
+      const lift=liftOf(r.m),reps=n(r.r),rpe=n(r.rpe)??avgN(r.g);
+      let load=n(r.l),it=n(r.i),M=null;
+      if(r.b){M=top?est(top.load,top.rpe,top.reps):null;load=M&&it!=null?mr(M*it):null}
+      else{M=est(load,rpe,reps);it=M?load/M:null;top={load,rpe,reps};
+        if(lift&&r.e&&M){if(!best[lift]||M>best[lift])best[lift]=M;its.push(it)}}
+      if(lift)out.vol+=(n(r.s)||0)*(reps||0);
+      rows.push({load,it});
+    });
+    out.days.push({main:rows});
+  });
+  LIFTS.forEach(l=>{if(best[l])out.e[l]=mr(best[l]/1.05)});
+  out.it=its.length?its.reduce((a,b)=>a+b,0)/its.length:null;
+  return out;
+}
+
+// Training max: typed value for the mesocycle, else best E1RM of the previous mesocycle
+function prevMax(mi,l){const P=DB.mesos[mi-1];if(!P)return null;let b=null;
+  P.weeks.forEach(w=>{const v=calcWeek(w).e[l];if(v&&(b==null||v>b))b=v});return b}
+const tmax=(mi,l)=>n(DB.mesos[mi]?.tm?.[l])??prevMax(mi,l);
+// Load range for a top set: max x RPE% x factor x relative intensity, rounded to 2.5
+function estRange(TM,r){
+  if(!r||r.b)return null;
+  const lift=liftOf(r.m),tmv=lift&&TM[lift];if(!tmv)return null;
+  const rpe=avgN(r.g);if(rpe==null)return null;
+  const p=pct(Math.round(rpe*2)/2,r.r);if(!p)return null;
+  const rel=nums(r.x),lo=(rel.length?Math.min(...rel):100)/100,hi=(rel.length?Math.max(...rel):100)/100,base=tmv*p*DB.estF;
+  return[mr(base*lo),mr(base*hi)];
+}
+
+function bio(){
+  const ds=Object.keys(DB.nut).sort();if(!ds.length)return[];
+  const days=[];for(let d=ds[0];d<=ds[ds.length-1];d=addD(d,1))days.push(d);
+  const cal=days.map(d=>{const x=DB.nut[d]||{};return(n(x.f)||0)*9+(n(x.c)||0)*4+(n(x.p)||0)*4||null});
+  const am=days.map(d=>n((DB.nut[d]||{}).am)||null);
+  const avg=(a,i,lo,hi)=>{const v=a.slice(Math.max(0,i+lo),i+hi+1).filter(x=>x!=null);return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
+  const slope=y=>{const m=y.length,xm=(m+1)/2,ym=y.reduce((a,b)=>a+b,0)/m;let a=0,b=0;y.forEach((v,i)=>{a+=(i+1-xm)*(v-ym);b+=(i+1-xm)**2});return a/b};
+  const avgC=cal.map((v,i)=>v!=null?avg(cal,i,-3,3):null);
+  const avgA=am.map((v,i)=>v!=null?avg(am,i,-3,3):null);
+  const rate=days.map((_,i)=>{if(am[i]==null)return null;const y=avgA.slice(Math.max(0,i-3),i+4).filter(x=>x!=null);return y.length>1?slope(y)*7:null});
+  const maint=days.map((_,i)=>avgA[i]!=null&&cal[i]!=null&&rate[i]!=null?avgC[i]-rate[i]*1100:null);
+  const mAvg=days.map((_,i)=>maint[i]!=null?avg(maint,i,-9,10):null);
+  return days.map((d,i)=>({d,cal:cal[i],avgC:avgC[i],am:am[i],avgA:avgA[i],rate:rate[i],maint:maint[i],mAvg:mAvg[i]}));
+}
+
+function progRows(){
+  const r=[];DB.mesos.forEach(m=>m.weeks.forEach(w=>{if(!w.start)return;const c=calcWeek(w);
+    if(c.e.squat||c.e.bench||c.e.deadlift)r.push({d:w.start,...c.e,vol:c.vol||null,it:c.it})}));
+  return r.sort((a,b)=>a.d<b.d?-1:1);
+}
+
+/* ---------- state ---------- */
+const mrow=()=>({m:'',v:'',s:'',r:'',g:'',x:'',l:'',a:'',rpe:'',i:'',e:false,b:false}),arow=()=>({m:'',s:'',r:'',l:'',g:'',n:''});
+const newDay=()=>({title:'',main:[mrow()],acc:[arow()]});
+const S={tab:'log',date:today(),mi:0,wk:0,dy:0};
+const curM=()=>DB.mesos[S.mi],curW=()=>curM()?.weeks[S.wk];
+
+// One-time upgrade: older data had no E1RM ticks, so tick the last "Comp" top set per lift each week
+function migrate(){
+  if(DB.v>=2)return;
+  DB.mesos.forEach(m=>m.weeks.forEach(w=>{const last={};
+    w.days.forEach(d=>d.main.forEach(r=>{r.x??='';r.a??='';r.e=false;
+      const l=liftOf(r.m);if(l&&!r.b&&String(r.v||'').trim().toLowerCase()==='comp')last[l]=r}));
+    Object.values(last).forEach(r=>r.e=true)}));
+  DB.v=2;persist();
+}
+function init(){migrate();S.mi=Math.max(DB.mesos.length-1,0);S.wk=0;S.dy=0;
+  const M=curM();if(M)M.weeks.forEach((w,i)=>{if(w.start&&w.start<=today())S.wk=i});showTab(S.tab)}
+
+/* ---------- tabs ---------- */
+function showTab(t){S.tab=t;
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));
+  ['log','train','prog','progress'].forEach(x=>$('#tab-'+x).hidden=x!==t);
+  ({log:rLog,train:rTrain,prog:rProg,progress:rProgress})[t]();}
+
+/* ---------- daily log ---------- */
+const NF=[['f','Fat (g)'],['c','Carbs (g)'],['p','Protein (g)'],['am','Weight AM (kg)'],['pm','Weight PM (kg)'],['w','Water']];
+function rLog(){
+  const d=DB.nut[S.date]||{};
+  $('#tab-log').innerHTML=`<div class="cols"><div class="panel"><h2>Log a day</h2>
+  <div class="row" style="margin-bottom:12px"><label>Date<input type="date" id="f_date" value="${S.date}"></label><span class="hint">${DB.nut[S.date]?'Editing an entry':'New entry'} · saves as you type</span></div>
+  <div class="row">${NF.slice(0,3).map(([k,l])=>`<label>${l}<input data-n="${k}" inputmode="decimal" size="6" value="${d[k]??''}"></label>`).join('')}
+  <label>Calories<div class="big" id="cal">–</div></label></div>
+  <div class="row" style="margin-top:12px">${NF.slice(3).map(([k,l])=>`<label>${l}<input data-n="${k}" inputmode="decimal" size="6" value="${d[k]??''}"></label>`).join('')}</div>
+  <p class="hint">Calories = fat×9 + carbs×4 + protein×4.</p></div>
+  <div class="panel" id="maintBox"></div></div>
+  <h3>Last 14 days</h3><div class="panel scroll"><table id="bioTable"></table></div>
+  <p class="hint">Tap a row to edit that day.</p>`;
+  updCal();rBio();
+}
+function updCal(){const d=DB.nut[S.date]||{};const v=(n(d.f)||0)*9+(n(d.c)||0)*4+(n(d.p)||0)*4;$('#cal').textContent=v?Math.round(v):'–'}
+function rBio(){
+  const b=bio();let m=null;for(let i=b.length-1;i>=0;i--)if(b[i].mAvg){m=b[i];break}
+  const lastA=[...b].reverse().find(r=>r.avgA);
+  const mb=$('#maintBox');
+  if(!mb.contains(document.activeElement))mb.innerHTML=`<h2>Maintenance</h2><div><span class="big">${m?Math.round(m.mAvg):'–'}</span><span class="unit">kcal / day</span></div>
+  <p class="hint">${m?'Average of recent estimates, as of '+fd(m.d)+'.':'Not enough weight and calorie data yet.'}</p>
+  <div class="row" style="margin-top:12px"><label>Comp weight (kg)<input data-n="comp" inputmode="decimal" size="6" value="${DB.comp??''}"></label></div>
+  <p class="hint">${lastA&&DB.comp?'Latest average AM weight is '+(lastA.avgA-DB.comp>=0?'+':'')+(lastA.avgA-DB.comp).toFixed(1)+' kg from comp.':''}</p>`;
+  const f1=v=>v==null?'–':Math.round(v*10)/10;
+  $('#bioTable').innerHTML='<tr><th>Date</th><th class="n">Calories</th><th class="n">7-day avg</th><th class="n">AM</th><th class="n">Avg AM</th><th class="n">kg/wk</th><th class="n">Maint.</th></tr>'+
+  b.slice(-14).reverse().map(r=>`<tr class="link" data-act="pick" data-d="${r.d}"><td>${fd(r.d)}</td><td class="n">${r.cal?Math.round(r.cal):'–'}</td><td class="n">${r.avgC?Math.round(r.avgC):'–'}</td><td class="n">${f1(r.am)}</td><td class="n">${f1(r.avgA)}</td><td class="n">${r.rate==null?'–':r.rate.toFixed(2)}</td><td class="n">${r.mAvg?Math.round(r.mAvg):'–'}</td></tr>`).join('');
+}
+let bt;const rBioSoon=()=>{clearTimeout(bt);bt=setTimeout(()=>{if(S.tab==='log')rBio()},500)};
+
+/* ---------- training ---------- */
+const MC=[['m','Movement'],['v','Variation'],['s','Sets'],['r','Reps'],['g','Goal RPE'],['x','Rel. %'],['est','Est. range'],['l','Load'],['a','Actual'],['rpe','RPE'],['i','Intensity'],['e','E1RM'],['b','Back-off']];
+const AC=[['m','Exercise'],['s','Sets'],['r','Reps'],['l','Load'],['g','Goal RIR'],['n','Notes']];
+function cell(f,ri,k,r,calc){
+  const at=`data-f="${f}" data-r="${ri}" data-k="${k}"`;
+  if(k==='b')return`<td><input type="checkbox" ${at} ${r.b?'checked':''}></td>`;
+  if(k==='e')return`<td><input type="checkbox" ${at} ${r.e?'checked':''} ${r.b?'disabled':''}></td>`;
+  if(k==='est')return`<td><input class="auto" disabled ${r.b?'':`data-est="${ri}"`} data-w="est"></td>`;
+  if(k==='x'&&r.b)return`<td><input class="auto" disabled data-w="x"></td>`;
+  if(calc)return`<td><input class="auto" disabled data-calc="${f}|${ri}|${calc}" data-w="${k}"></td>`;
+  const dec=(f==='main'?['s','r','l','a','rpe','i']:['s','l']).includes(k);
+  return`<td><input ${at} data-w="${k}" ${dec?'inputmode="decimal"':''} value="${esc(r[k])}"></td>`;
+}
+function dayHtml(D){
+  const head=c=>'<tr>'+c.map(h=>`<th>${h[1]}</th>`).join('')+'<th></th></tr>';
+  const main=D.main.map((r,ri)=>'<tr>'+MC.map(([k])=>cell('main',ri,k,r,k==='l'&&r.b?'load':k==='i'&&!r.b?'it':null)).join('')+`<td><button class="x" data-act="del" data-f="main" data-r="${ri}">×</button></td></tr>`).join('');
+  const acc=D.acc.map((r,ri)=>'<tr>'+AC.map(([k])=>cell('acc',ri,k,r,null)).join('')+`<td><button class="x" data-act="del" data-f="acc" data-r="${ri}">×</button></td></tr>`).join('');
+  return`<div class="day-title"><input data-f="day" data-k="title" value="${esc(D.title)}" placeholder="Day title"></div>
+  <div class="sub">Main lifts</div><div class="panel scroll"><table>${head(MC)}${main}</table></div><button class="quiet" data-act="addrow" data-f="main">+ Main lift</button>
+  <div class="sub">Accessories</div><div class="panel scroll"><table>${head(AC)}${acc}</table></div><button class="quiet" data-act="addrow" data-f="acc">+ Accessory</button>
+  <p class="hint"><b>Est. range</b> = training max × RPE % × factor × Rel. % (comp = 100, pause squat 90-95). <b>Load</b> drives back-offs, intensity and E1RM; <b>Actual</b> is only your log of what you really loaded. Tick <b>E1RM</b> on the top sets that should count toward the week's E1RM. Tick <b>Back-off</b> for rows calculated from the top set above (type their intensity, e.g. 0.72).</p>`;
+}
+function rTrain(){
+  const el=$('#tab-train'),M=curM();
+  if(!M){el.innerHTML='<p class="empty">No mesocycle yet. Open Program to import your data or start a blank one.</p>';return}
+  S.wk=Math.min(S.wk,M.weeks.length-1);const W=M.weeks[S.wk];S.dy=Math.min(S.dy,Math.max(W.days.length-1,0));const D=W.days[S.dy];
+  el.innerHTML=`<div class="row"><label>Mesocycle<select data-act="meso">${DB.mesos.map((m,i)=>`<option value="${i}" ${i===S.mi?'selected':''}>${esc(m.name)}</option>`).reverse().join('')}</select></label></div>
+  <div class="panel" style="margin-top:12px"><div class="row"><b>Training max (kg)</b>
+  ${LIFTS.map(l=>`<label>${cap(l)}<input data-tm="${l}" inputmode="decimal" size="6" placeholder="${prevMax(S.mi,l)??'–'}" value="${esc(M.tm?.[l]??'')}"></label>`).join('')}
+  <label>Factor<input data-estf="1" inputmode="decimal" size="6" value="${+DB.estF.toFixed(4)}"></label></div>
+  <p class="hint">Leave a max blank to use the best E1RM from the previous mesocycle (shown greyed). Factor is the 0.97 × 0.94 conservatism from your estimate formula.</p></div>
+  <div class="seg" id="weekSeg"></div>
+  <div class="week"><label class="title"><input data-f="wk" data-k="title" value="${esc(W.title)}"></label>
+  <label>Week starts<input type="date" data-f="wk" data-k="start" value="${W.start||''}"></label><div class="e1" id="e1box"></div></div>
+  <div class="seg">${W.days.map((d,i)=>`<button data-act="dy" data-i="${i}" aria-pressed="${i===S.dy}">Day ${i+1}</button>`).join('')}<button data-act="addday">+ Day</button></div>
+  <div>${D?dayHtml(D):'<p class="empty">No days in this week. Add one.</p>'}</div>`;
+  rWeekSeg();refreshCalc();
+}
+function rWeekSeg(){const M=curM();if(!M||!$('#weekSeg'))return;
+  $('#weekSeg').innerHTML=M.weeks.map((w,i)=>`<button data-act="wk" data-i="${i}" aria-pressed="${i===S.wk}">Week ${i+1}${w.start?`<small>${fd(w.start)}</small>`:''}</button>`).join('')}
+function refreshCalc(){
+  const W=curW();if(!W||!$('#e1box'))return;const c=calcWeek(W),D=W.days[S.dy];
+  const TM={};LIFTS.forEach(l=>TM[l]=tmax(S.mi,l));
+  document.querySelectorAll('[data-calc]').forEach(i=>{const[f,r,k]=i.dataset.calc.split('|');const v=c.days[S.dy]?.[f]?.[+r]?.[k];i.value=v==null?'':+v.toFixed(3)});
+  document.querySelectorAll('[data-est]').forEach(i=>{const e=D&&estRange(TM,D.main[+i.dataset.est]);i.value=e?(e[0]===e[1]?e[0]:e[0]+'–'+e[1]):''});
+  $('#e1box').innerHTML=LIFTS.map(l=>`<div style="border-color:${COL[l]}"><b>${c.e[l]??'–'}</b><span>${cap(l)} E1RM</span></div>`).join('')+
+   `<div><b>${c.vol||'–'}</b><span>Reps (S/B/D)</span></div><div><b>${c.it?c.it.toFixed(2):'–'}</b><span>Avg intensity</span></div>`;
+}
+
+/* ---------- program / data ---------- */
+function rProg(){
+  const M=curM(),opts=DB.mesos.map((m,i)=>`<option value="${i}" ${i===DB.mesos.length-1?'selected':''}>${esc(m.name)}</option>`).reverse().join('');
+  const wopts=M?M.weeks.map((w,i)=>`<option value="${i}">Week ${i+1}</option>`).join(''):'';
+  $('#tab-prog').innerHTML=`<div class="cols"><div class="panel"><h2>New mesocycle</h2>
+  <div class="row"><label>Name<input id="m_name" placeholder="e.g. Peaking 4-1" size="18"></label><label>First week starts<input type="date" id="m_start" value="${today()}"></label></div>
+  <div class="row" style="margin-top:10px"><label>Copy structure from<select id="m_tpl"><option value="">Blank</option>${opts}</select></label></div>
+  <div style="margin-top:10px;display:grid;gap:8px"><label class="check"><input type="checkbox" id="m_rpe" checked>Clear logged RPE and actual loads</label><label class="check"><input type="checkbox" id="m_notes" checked>Clear accessory notes</label><label class="check"><input type="checkbox" id="m_loads">Clear typed loads</label></div>
+  <div style="margin-top:14px"><button class="go" data-act="mk">Create mesocycle</button></div>
+  <p class="hint">Training maxes start blank, so they default to the best E1RM of the mesocycle before it.</p></div>
+  <div class="panel"><h2>Copy a week</h2><p class="hint" style="margin-top:0">In: <b>${esc(M?.name||'–')}</b></p>
+  <div class="row"><label>From<select id="cw_from">${wopts}</select></label><label>To<select id="cw_to">${wopts}</select></label><label>Load change %<input id="cw_pct" value="0" inputmode="decimal" size="4"></label></div>
+  <div class="row" style="margin-top:14px"><button class="go" data-act="cp">Copy week</button><button class="quiet" data-act="addweek">Add week (copy of last)</button></div>
+  <p class="hint">Replaces the target week's plan. Logged RPE, actual loads and notes are cleared; load change applies to typed loads, rounded to 2.5.</p></div></div>
+  <div class="panel"><h2>Backup &amp; restore</h2>
+  <p class="hint" style="margin-top:0">Data lives only on this device. Export a backup regularly.</p>
+  <div class="row" style="margin-top:10px"><button class="go" data-act="exp">Export backup</button><label class="quiet" style="border:1px solid var(--line);border-radius:4px;padding:8px 12px;color:var(--ink);cursor:pointer;flex-direction:row">Import file<input type="file" id="imp" accept=".json,application/json" hidden></label>
+  ${M?`<button class="danger" data-act="delmeso">Delete this mesocycle</button>`:''}</div></div>`;
+  if(M)$('#cw_to').value=Math.min(S.wk+1,M.weeks.length-1),$('#cw_from').value=S.wk;
+}
+const clearWeek=(w,o={})=>w.days.forEach(d=>{d.main.forEach(r=>{if(o.rpe){r.rpe='';r.a=''}if(o.loads&&!r.b)r.l=''});if(o.notes)d.acc.forEach(r=>r.n='')});
+
+/* ---------- progress ---------- */
+function rProgress(){
+  const P=progRows(),B=bio(),el=$('#tab-progress');
+  const best=l=>{const v=P.filter(r=>r[l]);if(!v.length)return'';const b=v.reduce((a,r)=>r[l]>a[l]?r:a),la=v[v.length-1];
+    return`<div class="tile" style="border-color:${COL[l]}"><span>${cap(l)} E1RM</span><b>${la[l]}</b> kg<span>Best ${b[l]} kg, ${fd(b.d)}</span></div>`};
+  const ch=(id,t)=>`<h3>${t}</h3><div class="panel"><div id="${id}"></div></div>`;
+  el.innerHTML=`<div class="tiles">${LIFTS.map(best).join('')}</div><h3>Estimated 1RM</h3>
+  <div class="three">${LIFTS.map(l=>`<div class="panel"><div class="sub" style="margin-top:0">${cap(l)}</div><div id="c_${l}"></div></div>`).join('')}</div>
+  ${ch('c_vol','Weekly volume (S+B+D reps)')}${ch('c_it','Average intensity')}${ch('c_bw','Body weight (7-day avg AM)')}${ch('c_cal','Calories and estimated maintenance')}${ch('c_rate','Rate of change (kg / week)')}`;
+  LIFTS.forEach(l=>chart('c_'+l,[{p:P.filter(r=>r[l]).map(r=>[r.d,r[l]]),color:COL[l],dots:true}]));
+  chart('c_vol',[{p:P.filter(r=>r.vol).map(r=>[r.d,r.vol]),color:'#3DDC84',dots:true}]);
+  chart('c_it',[{p:P.filter(r=>r.it).map(r=>[r.d,r.it]),color:'#E6EFEA',dots:true}]);
+  chart('c_bw',[{p:B.filter(r=>r.avgA).map(r=>[r.d,r.avgA]),color:'#3DDC84'}]);
+  chart('c_cal',[{name:'Daily',p:B.filter(r=>r.cal).map(r=>[r.d,r.cal]),color:'#6B7F75',line:false,dots:true},
+    {name:'7-day avg',p:B.filter(r=>r.avgC).map(r=>[r.d,r.avgC]),color:'#E6EFEA'},
+    {name:'Est. maintenance avg',p:B.filter(r=>r.mAvg).map(r=>[r.d,r.mAvg]),color:'#F0766B'}]);
+  chart('c_rate',[{p:B.filter(r=>r.rate!=null).map(r=>[r.d,r.rate]),color:'#3DDC84'}]);
+}
+function chart(id,series,o={}){
+  const el=$('#'+id),all=series.flatMap(s=>s.p);
+  if(!all.length){el.innerHTML='<p class="empty">No data yet.</p>';return}
+  const W=Math.max(el.clientWidth,260),H=o.h||190,L=44,R=10,T=8,B=24,t=p=>Date.parse(p[0]+'T00:00');
+  const xs=all.map(t),x0=Math.min(...xs),x1=Math.max(...xs);let y0=Math.min(...all.map(p=>p[1])),y1=Math.max(...all.map(p=>p[1]));
+  const pad=(y1-y0||Math.abs(y1)*.05||1)*.1;y0-=pad;y1+=pad;
+  const X=v=>L+(x1===x0?.5:(v-x0)/(x1-x0))*(W-L-R),Y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);
+  let g='';for(let i=0;i<=4;i++){const v=y0+(y1-y0)*i/4,y=Y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="#26332D"/><text x="${L-6}" y="${y+4}" text-anchor="end" fill="#8FA39A" font-size="11">${Math.abs(v)<10?v.toFixed(2):Math.round(v)}</text>`}
+  [x0,(x0+x1)/2,x1].forEach((v,i)=>{g+=`<text x="${X(v)}" y="${H-6}" text-anchor="${i===0?'start':i===2?'end':'middle'}" fill="#8FA39A" font-size="11">${fdm(v)}</text>`});
+  series.forEach(s=>{const pts=s.p.map(p=>[X(t(p)),Y(p[1])]);
+    if(s.line!==false&&pts.length>1)g+=`<path d="M${pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
+    if(s.dots||pts.length===1)pts.forEach(p=>g+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${s.color}"/>`)});
+  const leg=series.length>1?`<div class="leg">${series.map(s=>`<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}</div>`:'';
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${g}</svg>${leg}`;
+}
+addEventListener('resize',()=>{if(S.tab==='progress')rProgress()});
+
+/* ---------- events ---------- */
+document.addEventListener('input',e=>{
+  const t=e.target,d=t.dataset;if(t.type==='checkbox')return;
+  if(d.n){
+    if(d.n==='comp'){DB.comp=n(t.value);save();rBioSoon();return}
+    const o=DB.nut[S.date]||(DB.nut[S.date]={}),v=t.value.trim();
+    if(v==='')delete o[d.n];else if(isFinite(+v))o[d.n]=+v;
+    if(!Object.keys(o).length)delete DB.nut[S.date];
+    save();updCal();rBioSoon();return}
+  if(d.tm){const M=curM();(M.tm=M.tm||{})[d.tm]=t.value;save();refreshCalc();return}
+  if(d.estf){const v=n(t.value);if(v>0){DB.estF=v;save();refreshCalc()}return}
+  const W=curW();if(!W||!d.f)return;
+  if(d.f==='wk'){W[d.k]=t.value;if(d.k==='start')rWeekSeg()}
+  else if(d.f==='day')W.days[S.dy].title=t.value;
+  else W.days[S.dy][d.f][+d.r][d.k]=t.value;
+  save();refreshCalc();
+});
+document.addEventListener('change',e=>{
+  const t=e.target,d=t.dataset;
+  if(t.id==='f_date'){if(t.value){S.date=t.value;rLog()}return}
+  if(d.act==='meso'){S.mi=+t.value;S.wk=0;S.dy=0;const M=curM();M.weeks.forEach((w,i)=>{if(w.start&&w.start<=today())S.wk=i});rTrain();return}
+  if(t.type==='checkbox'&&d.f==='main'){curW().days[S.dy].main[+d.r][d.k]=t.checked;save();d.k==='b'?rTrain():refreshCalc();return}
+  if(t.id==='imp'&&t.files[0]){const fr=new FileReader();fr.onload=()=>{
+    try{const j=JSON.parse(fr.result);if(!j||(!Array.isArray(j.mesos)&&!j.nut))throw 0;
+      if(!confirm('Replace ALL data on this device with the file?'))return;
+      DB={v:j.v||0,comp:j.comp??null,nut:j.nut||{},mesos:j.mesos||[],estF:j.estF??0.97*0.94};persist();init();toast('Imported')}
+    catch(x){toast('That file is not a valid export.',1)}};fr.readAsText(t.files[0]);t.value=''}
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act],[data-tab]');if(!b)return;const d=b.dataset;
+  if(d.tab)return showTab(d.tab);
+  const W=curW(),M=curM();
+  switch(d.act){
+    case'wk':S.wk=+d.i;S.dy=0;rTrain();break;
+    case'dy':S.dy=+d.i;rTrain();break;
+    case'addday':W.days.push(newDay());S.dy=W.days.length-1;save();rTrain();break;
+    case'addrow':W.days[S.dy][d.f].push(d.f==='main'?mrow():arow());save();rTrain();break;
+    case'del':W.days[S.dy][d.f].splice(+d.r,1);save();rTrain();break;
+    case'pick':S.date=d.d;rLog();scrollTo(0,0);break;
+    case'mk':{const name=$('#m_name').value.trim(),st=$('#m_start').value,ti=$('#m_tpl').value;
+      if(!name)return toast('Enter a name.',1);if(DB.mesos.some(m=>m.name===name))return toast('That name is already used.',1);
+      let m;if(ti===''){m={name,weeks:[{title:'Week 1',start:st||today(),days:[newDay()]}]}}
+      else{m=clone(DB.mesos[+ti]);m.name=name;delete m.tm;const delta=st&&m.weeks[0].start?daysB(m.weeks[0].start,st):0;
+        m.weeks.forEach(w=>{if(w.start)w.start=addD(w.start,delta);clearWeek(w,{rpe:$('#m_rpe').checked,notes:$('#m_notes').checked,loads:$('#m_loads').checked})})}
+      DB.mesos.push(m);save();S.mi=DB.mesos.length-1;S.wk=0;S.dy=0;toast('Created "'+name+'"');showTab('train');break}
+    case'cp':{if(!M)break;const f=+$('#cw_from').value,t=+$('#cw_to').value,k=1+(n($('#cw_pct').value)||0)/100;
+      if(f===t)return toast('Pick two different weeks.',1);
+      if(M.weeks[t].days.length&&!confirm('Week '+(t+1)+' already has a plan. Replace it?'))break;
+      const src=clone(M.weeks[f]);clearWeek(src,{rpe:1,notes:1});
+      if(k!==1)src.days.forEach(d=>d.main.forEach(r=>{const l=n(r.l);if(!r.b&&l!=null)r.l=mr(l*k)}));
+      M.weeks[t].days=src.days;save();S.wk=t;S.dy=0;toast('Week copied');showTab('train');break}
+    case'addweek':{if(!M||!M.weeks.length)break;const last=M.weeks[M.weeks.length-1],w=clone(last);clearWeek(w,{rpe:1,notes:1});
+      w.title='Week '+(M.weeks.length+1);w.start=last.start?addD(last.start,7):'';M.weeks.push(w);save();S.wk=M.weeks.length-1;S.dy=0;showTab('train');break}
+    case'delmeso':if(M&&confirm('Delete "'+M.name+'" permanently?')){DB.mesos.splice(S.mi,1);save();init()}break;
+    case'exp':{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));
+      a.download='training-backup-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);break}
+  }
+});
+
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+init();
+</script></body></html>
