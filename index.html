@@ -4,10 +4,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0E1512">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Training Log</title>
 <style>
-:root{color-scheme:dark;--paper:#0E1512;--card:#161F1B;--ink:#E6EFEA;--mute:#8FA39A;--line:#26332D;--field:#1B2621;--accent:#3DDC84;--ai:#06210F;--squat:#6AA9E6;--bench:#F0766B;--dead:#D9B35A}
+:root{color-scheme:dark;--paper:#0E1512;--card:#161F1B;--ink:#E6EFEA;--mute:#8FA39A;--line:#26332D;--field:#1B2621;--accent:#3DDC84;--ai:#06210F}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 header,main{max-width:1100px;margin:0 auto;padding:0 12px}
@@ -24,24 +25,32 @@ section{padding-top:16px}section[hidden]{display:none}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:760px){.cols{grid-template-columns:1fr}}
 label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mute)}
-input,select{font:500 16px system-ui;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:7px 9px;min-width:0}
-input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent)}
+input,select,textarea{font:500 16px system-ui;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:7px 9px;min-width:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent)}
 input.auto{background:transparent;border-color:transparent;color:var(--mute)}
-input[type=checkbox]{accent-color:var(--accent);width:20px;height:20px}
+input[type=checkbox]{accent-color:var(--accent);width:20px;height:20px;margin:0}
 .check{flex-direction:row;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
 button{font:600 15px system-ui;cursor:pointer}
 button.go{background:var(--accent);color:var(--ai);border:0;border-radius:4px;padding:10px 18px}
 button.quiet{background:none;border:1px solid var(--line);border-radius:4px;padding:8px 12px;color:var(--ink)}
 button.danger{background:none;border:1px solid #8E2C25;color:#F0766B;border-radius:4px;padding:8px 12px}
-button.x{background:none;border:0;color:var(--mute);font-size:20px;padding:0 8px}
+button.x{background:none;border:0;color:var(--mute);font-size:20px;padding:0 6px}
 .hint{color:var(--mute);font-size:13px;margin:6px 0 0}.empty{color:var(--mute);padding:14px 0}
 .big{font:700 40px/1 'Arial Narrow',system-ui,sans-serif}.unit{color:var(--mute);margin-left:4px}
-table{border-collapse:collapse;width:max-content;min-width:100%}
-th{font:600 12px system-ui;color:var(--mute);text-align:left;padding:6px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:3px;border-bottom:1px solid var(--line)}td input:not([type=checkbox]){width:100%;min-width:56px}
-input[data-w=m]{min-width:150px!important}input[data-w=v]{min-width:120px!important}input[data-w=n]{min-width:170px!important}
-input[data-w=l],input[data-w=a]{min-width:76px!important}input[data-w=est]{min-width:104px!important}input[data-w=x]{min-width:72px!important}
-.scroll{overflow-x:auto;padding:6px}
+table{border-collapse:collapse;width:max-content}
+th{font:600 11px system-ui;color:var(--mute);text-align:left;padding:5px 3px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:2px;border-bottom:1px solid var(--line);vertical-align:middle}
+/* compact table cells */
+td input,td textarea{font:500 14px/1.25 system-ui;border-radius:3px}
+td input:not([type=checkbox]){padding:5px 3px}
+td input[type=checkbox]{display:block;margin:0 auto}
+td textarea{display:block;padding:4px 4px;resize:none;overflow:hidden;height:30px}
+[data-w=m]{width:92px}[data-w=v]{width:100px}[data-w=n]{width:130px}
+[data-w=s]{width:34px}[data-w=r]{width:46px}[data-w=g]{width:46px}[data-w=x]{width:50px}
+[data-w=est]{width:78px}[data-w=l]{width:54px}[data-w=rpe]{width:40px}[data-w=i]{width:48px}
+td:has(>input[type=checkbox]){width:34px}
+td input,td textarea{text-align:left}
+.scroll{overflow-x:auto;padding:4px}
 .scroll td:first-child,.scroll th:first-child{position:sticky;left:0;background:var(--card);z-index:1}
 td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}tr.link{cursor:pointer}
 .seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
@@ -76,11 +85,13 @@ const n=v=>{const x=parseFloat(v);return isFinite(x)?x:null};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const COL={squat:'#6AA9E6',bench:'#F0766B',deadlift:'#D9B35A'},LIFTS=['squat','bench','deadlift'];
 const cap=s=>s[0].toUpperCase()+s.slice(1);
+const DEF_F=0.94;                                   // single estimate factor
+const fixF=f=>f==null||Math.abs(f-0.97*0.94)<1e-6?DEF_F:f;   // old two-part default -> 0.94
 
 /* ---------- storage ---------- */
 let DB;try{DB=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 DB=DB||{v:2,comp:null,nut:{},mesos:[]};
-if(DB.estF==null)DB.estF=0.97*0.94;
+DB.estF=fixF(DB.estF);
 let tm;const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB));return true}catch(e){toast('Could not save (storage full or blocked). Export a backup.',1);return false}};
 const save=()=>{clearTimeout(tm);tm=setTimeout(persist,200)};
 addEventListener('pagehide',()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}});
@@ -160,7 +171,7 @@ function progRows(){
 }
 
 /* ---------- state ---------- */
-const mrow=()=>({m:'',v:'',s:'',r:'',g:'',x:'',l:'',a:'',rpe:'',i:'',e:false,b:false}),arow=()=>({m:'',s:'',r:'',l:'',g:'',n:''});
+const mrow=()=>({m:'',v:'',s:'',r:'',g:'',x:'',l:'',rpe:'',i:'',e:false,b:false}),arow=()=>({m:'',s:'',r:'',l:'',g:'',n:''});
 const newDay=()=>({title:'',main:[mrow()],acc:[arow()]});
 const S={tab:'log',date:today(),mi:0,wk:0,dy:0};
 const curM=()=>DB.mesos[S.mi],curW=()=>curM()?.weeks[S.wk];
@@ -169,7 +180,7 @@ const curM=()=>DB.mesos[S.mi],curW=()=>curM()?.weeks[S.wk];
 function migrate(){
   if(DB.v>=2)return;
   DB.mesos.forEach(m=>m.weeks.forEach(w=>{const last={};
-    w.days.forEach(d=>d.main.forEach(r=>{r.x??='';r.a??='';r.e=false;
+    w.days.forEach(d=>d.main.forEach(r=>{r.x??='';r.e=false;delete r.a;
       const l=liftOf(r.m);if(l&&!r.b&&String(r.v||'').trim().toLowerCase()==='comp')last[l]=r}));
     Object.values(last).forEach(r=>r.e=true)}));
   DB.v=2;persist();
@@ -214,8 +225,10 @@ function rBio(){
 let bt;const rBioSoon=()=>{clearTimeout(bt);bt=setTimeout(()=>{if(S.tab==='log')rBio()},500)};
 
 /* ---------- training ---------- */
-const MC=[['m','Movement'],['v','Variation'],['s','Sets'],['r','Reps'],['g','Goal RPE'],['x','Rel. %'],['est','Est. range'],['l','Load'],['a','Actual'],['rpe','RPE'],['i','Intensity'],['e','E1RM'],['b','Back-off']];
-const AC=[['m','Exercise'],['s','Sets'],['r','Reps'],['l','Load'],['g','Goal RIR'],['n','Notes']];
+// [key, short header, full name]
+const MC=[['m','Movement'],['v','Variation'],['s','Sets'],['r','Reps'],['g','Goal','Goal RPE'],['x','Rel %','Relative intensity vs comp (comp = 100)'],['est','Range','Estimated load range'],['l','Load','Load (drives back-offs, intensity, E1RM)'],['rpe','RPE','Logged RPE'],['i','Int.','Intensity'],['e','E1RM','Counts toward the week E1RM'],['b','Back','Back-off set']];
+const AC=[['m','Exercise'],['s','Sets'],['r','Reps'],['l','Load'],['g','RIR','Goal RIR'],['n','Notes']];
+const fit=t=>{t.style.height='auto';t.style.height=Math.min(Math.max(t.scrollHeight+2,30),48)+'px'};
 function cell(f,ri,k,r,calc){
   const at=`data-f="${f}" data-r="${ri}" data-k="${k}"`;
   if(k==='b')return`<td><input type="checkbox" ${at} ${r.b?'checked':''}></td>`;
@@ -223,17 +236,18 @@ function cell(f,ri,k,r,calc){
   if(k==='est')return`<td><input class="auto" disabled ${r.b?'':`data-est="${ri}"`} data-w="est"></td>`;
   if(k==='x'&&r.b)return`<td><input class="auto" disabled data-w="x"></td>`;
   if(calc)return`<td><input class="auto" disabled data-calc="${f}|${ri}|${calc}" data-w="${k}"></td>`;
-  const dec=(f==='main'?['s','r','l','a','rpe','i']:['s','l']).includes(k);
+  if(['m','v','n'].includes(k))return`<td><textarea rows="1" ${at} data-w="${k}">${esc(r[k])}</textarea></td>`;
+  const dec=(f==='main'?['s','r','l','rpe','i']:['s','l']).includes(k);
   return`<td><input ${at} data-w="${k}" ${dec?'inputmode="decimal"':''} value="${esc(r[k])}"></td>`;
 }
 function dayHtml(D){
-  const head=c=>'<tr>'+c.map(h=>`<th>${h[1]}</th>`).join('')+'<th></th></tr>';
+  const head=c=>'<tr>'+c.map(h=>`<th title="${h[2]||h[1]}">${h[1]}</th>`).join('')+'<th></th></tr>';
   const main=D.main.map((r,ri)=>'<tr>'+MC.map(([k])=>cell('main',ri,k,r,k==='l'&&r.b?'load':k==='i'&&!r.b?'it':null)).join('')+`<td><button class="x" data-act="del" data-f="main" data-r="${ri}">×</button></td></tr>`).join('');
   const acc=D.acc.map((r,ri)=>'<tr>'+AC.map(([k])=>cell('acc',ri,k,r,null)).join('')+`<td><button class="x" data-act="del" data-f="acc" data-r="${ri}">×</button></td></tr>`).join('');
   return`<div class="day-title"><input data-f="day" data-k="title" value="${esc(D.title)}" placeholder="Day title"></div>
   <div class="sub">Main lifts</div><div class="panel scroll"><table>${head(MC)}${main}</table></div><button class="quiet" data-act="addrow" data-f="main">+ Main lift</button>
   <div class="sub">Accessories</div><div class="panel scroll"><table>${head(AC)}${acc}</table></div><button class="quiet" data-act="addrow" data-f="acc">+ Accessory</button>
-  <p class="hint"><b>Est. range</b> = training max × RPE % × factor × Rel. % (comp = 100, pause squat 90-95). <b>Load</b> drives back-offs, intensity and E1RM; <b>Actual</b> is only your log of what you really loaded. Tick <b>E1RM</b> on the top sets that should count toward the week's E1RM. Tick <b>Back-off</b> for rows calculated from the top set above (type their intensity, e.g. 0.72).</p>`;
+  <p class="hint"><b>Load</b> is the one weight you enter: it drives back-offs, intensity and E1RM. <b>Range</b> = training max × RPE % × factor × Rel % (comp = 100, pause squat 90-95). Tick <b>E1RM</b> on the top sets that count toward the week's E1RM. Tick <b>Back</b> for rows calculated from the top set above (type their intensity, e.g. 0.72).</p>`;
 }
 function rTrain(){
   const el=$('#tab-train'),M=curM();
@@ -242,14 +256,14 @@ function rTrain(){
   el.innerHTML=`<div class="row"><label>Mesocycle<select data-act="meso">${DB.mesos.map((m,i)=>`<option value="${i}" ${i===S.mi?'selected':''}>${esc(m.name)}</option>`).reverse().join('')}</select></label></div>
   <div class="panel" style="margin-top:12px"><div class="row"><b>Training max (kg)</b>
   ${LIFTS.map(l=>`<label>${cap(l)}<input data-tm="${l}" inputmode="decimal" size="6" placeholder="${prevMax(S.mi,l)??'–'}" value="${esc(M.tm?.[l]??'')}"></label>`).join('')}
-  <label>Factor<input data-estf="1" inputmode="decimal" size="6" value="${+DB.estF.toFixed(4)}"></label></div>
-  <p class="hint">Leave a max blank to use the best E1RM from the previous mesocycle (shown greyed). Factor is the 0.97 × 0.94 conservatism from your estimate formula.</p></div>
+  <label>Factor<input data-estf="1" inputmode="decimal" size="5" value="${+DB.estF.toFixed(4)}"></label></div>
+  <p class="hint">Leave a max blank to use the best E1RM from the previous mesocycle (shown greyed). Factor is a single multiplier on max × RPE % (e.g. 0.94).</p></div>
   <div class="seg" id="weekSeg"></div>
   <div class="week"><label class="title"><input data-f="wk" data-k="title" value="${esc(W.title)}"></label>
   <label>Week starts<input type="date" data-f="wk" data-k="start" value="${W.start||''}"></label><div class="e1" id="e1box"></div></div>
   <div class="seg">${W.days.map((d,i)=>`<button data-act="dy" data-i="${i}" aria-pressed="${i===S.dy}">Day ${i+1}</button>`).join('')}<button data-act="addday">+ Day</button></div>
   <div>${D?dayHtml(D):'<p class="empty">No days in this week. Add one.</p>'}</div>`;
-  rWeekSeg();refreshCalc();
+  rWeekSeg();refreshCalc();el.querySelectorAll('textarea').forEach(fit);
 }
 function rWeekSeg(){const M=curM();if(!M||!$('#weekSeg'))return;
   $('#weekSeg').innerHTML=M.weeks.map((w,i)=>`<button data-act="wk" data-i="${i}" aria-pressed="${i===S.wk}">Week ${i+1}${w.start?`<small>${fd(w.start)}</small>`:''}</button>`).join('')}
@@ -269,20 +283,20 @@ function rProg(){
   $('#tab-prog').innerHTML=`<div class="cols"><div class="panel"><h2>New mesocycle</h2>
   <div class="row"><label>Name<input id="m_name" placeholder="e.g. Peaking 4-1" size="18"></label><label>First week starts<input type="date" id="m_start" value="${today()}"></label></div>
   <div class="row" style="margin-top:10px"><label>Copy structure from<select id="m_tpl"><option value="">Blank</option>${opts}</select></label></div>
-  <div style="margin-top:10px;display:grid;gap:8px"><label class="check"><input type="checkbox" id="m_rpe" checked>Clear logged RPE and actual loads</label><label class="check"><input type="checkbox" id="m_notes" checked>Clear accessory notes</label><label class="check"><input type="checkbox" id="m_loads">Clear typed loads</label></div>
+  <div style="margin-top:10px;display:grid;gap:8px"><label class="check"><input type="checkbox" id="m_rpe" checked>Clear logged RPE</label><label class="check"><input type="checkbox" id="m_notes" checked>Clear accessory notes</label><label class="check"><input type="checkbox" id="m_loads">Clear typed loads</label></div>
   <div style="margin-top:14px"><button class="go" data-act="mk">Create mesocycle</button></div>
   <p class="hint">Training maxes start blank, so they default to the best E1RM of the mesocycle before it.</p></div>
   <div class="panel"><h2>Copy a week</h2><p class="hint" style="margin-top:0">In: <b>${esc(M?.name||'–')}</b></p>
   <div class="row"><label>From<select id="cw_from">${wopts}</select></label><label>To<select id="cw_to">${wopts}</select></label><label>Load change %<input id="cw_pct" value="0" inputmode="decimal" size="4"></label></div>
   <div class="row" style="margin-top:14px"><button class="go" data-act="cp">Copy week</button><button class="quiet" data-act="addweek">Add week (copy of last)</button></div>
-  <p class="hint">Replaces the target week's plan. Logged RPE, actual loads and notes are cleared; load change applies to typed loads, rounded to 2.5.</p></div></div>
+  <p class="hint">Replaces the target week's plan. Logged RPE and notes are cleared; load change applies to typed loads, rounded to 2.5.</p></div></div>
   <div class="panel"><h2>Backup &amp; restore</h2>
   <p class="hint" style="margin-top:0">Data lives only on this device. Export a backup regularly.</p>
   <div class="row" style="margin-top:10px"><button class="go" data-act="exp">Export backup</button><label class="quiet" style="border:1px solid var(--line);border-radius:4px;padding:8px 12px;color:var(--ink);cursor:pointer;flex-direction:row">Import file<input type="file" id="imp" accept=".json,application/json" hidden></label>
   ${M?`<button class="danger" data-act="delmeso">Delete this mesocycle</button>`:''}</div></div>`;
   if(M)$('#cw_to').value=Math.min(S.wk+1,M.weeks.length-1),$('#cw_from').value=S.wk;
 }
-const clearWeek=(w,o={})=>w.days.forEach(d=>{d.main.forEach(r=>{if(o.rpe){r.rpe='';r.a=''}if(o.loads&&!r.b)r.l=''});if(o.notes)d.acc.forEach(r=>r.n='')});
+const clearWeek=(w,o={})=>w.days.forEach(d=>{d.main.forEach(r=>{if(o.rpe)r.rpe='';if(o.loads&&!r.b)r.l=''});if(o.notes)d.acc.forEach(r=>r.n='')});
 
 /* ---------- progress ---------- */
 function rProgress(){
@@ -320,8 +334,10 @@ function chart(id,series,o={}){
 addEventListener('resize',()=>{if(S.tab==='progress')rProgress()});
 
 /* ---------- events ---------- */
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='TEXTAREA'){e.preventDefault();e.target.blur()}});
 document.addEventListener('input',e=>{
   const t=e.target,d=t.dataset;if(t.type==='checkbox')return;
+  if(t.tagName==='TEXTAREA'){if(/\n/.test(t.value))t.value=t.value.replace(/\n/g,' ');fit(t)}
   if(d.n){
     if(d.n==='comp'){DB.comp=n(t.value);save();rBioSoon();return}
     const o=DB.nut[S.date]||(DB.nut[S.date]={}),v=t.value.trim();
@@ -344,7 +360,7 @@ document.addEventListener('change',e=>{
   if(t.id==='imp'&&t.files[0]){const fr=new FileReader();fr.onload=()=>{
     try{const j=JSON.parse(fr.result);if(!j||(!Array.isArray(j.mesos)&&!j.nut))throw 0;
       if(!confirm('Replace ALL data on this device with the file?'))return;
-      DB={v:j.v||0,comp:j.comp??null,nut:j.nut||{},mesos:j.mesos||[],estF:j.estF??0.97*0.94};persist();init();toast('Imported')}
+      DB={v:j.v||0,comp:j.comp??null,nut:j.nut||{},mesos:j.mesos||[],estF:fixF(j.estF)};persist();init();toast('Imported')}
     catch(x){toast('That file is not a valid export.',1)}};fr.readAsText(t.files[0]);t.value=''}
 });
 document.addEventListener('click',e=>{
