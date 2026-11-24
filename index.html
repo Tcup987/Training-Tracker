@@ -292,8 +292,11 @@ function rProg(){
   <p class="hint">Replaces the target week's plan. Logged RPE and notes are cleared; load change applies to typed loads, rounded to 2.5.</p></div></div>
   <div class="panel"><h2>Backup &amp; restore</h2>
   <p class="hint" style="margin-top:0">Data lives only on this device. Export a backup regularly.</p>
-  <div class="row" style="margin-top:10px"><button class="go" data-act="exp">Export backup</button><label class="quiet" style="border:1px solid var(--line);border-radius:4px;padding:8px 12px;color:var(--ink);cursor:pointer;flex-direction:row">Import file<input type="file" id="imp" accept=".json,application/json" hidden></label>
-  ${M?`<button class="danger" data-act="delmeso">Delete this mesocycle</button>`:''}</div></div>`;
+  <div class="row" style="margin-top:10px"><button class="go" data-act="exp">Export backup</button><label class="quiet" style="border:1px solid var(--line);border-radius:4px;padding:8px 12px;color:var(--ink);cursor:pointer;flex-direction:row">Import file<input type="file" id="imp" hidden></label>
+  ${M?`<button class="danger" data-act="delmeso">Delete this mesocycle</button>`:''}</div>
+  <details style="margin-top:12px"><summary class="hint" style="cursor:pointer">Can't pick the file? Paste its contents instead</summary>
+  <textarea id="pasteJson" rows="4" style="width:100%;height:auto;margin-top:8px" placeholder="Paste the full contents of training-export.json"></textarea>
+  <div style="margin-top:8px"><button class="quiet" data-act="pasteimp">Import pasted text</button></div></details></div>`;
   if(M)$('#cw_to').value=Math.min(S.wk+1,M.weeks.length-1),$('#cw_from').value=S.wk;
 }
 const clearWeek=(w,o={})=>w.days.forEach(d=>{d.main.forEach(r=>{if(o.rpe)r.rpe='';if(o.loads&&!r.b)r.l=''});if(o.notes)d.acc.forEach(r=>r.n='')});
@@ -334,6 +337,12 @@ function chart(id,series,o={}){
 addEventListener('resize',()=>{if(S.tab==='progress')rProgress()});
 
 /* ---------- events ---------- */
+function importText(txt){
+  try{const j=JSON.parse(String(txt).replace(/^\uFEFF/,'').trim());if(!j||(!Array.isArray(j.mesos)&&!j.nut))throw 0;
+    if(!confirm('Replace ALL data on this device with this backup?'))return;
+    DB={v:j.v||0,comp:j.comp??null,nut:j.nut||{},mesos:j.mesos||[],estF:fixF(j.estF)};persist();init();toast('Imported')}
+  catch(x){toast('That is not a valid export.',1)}
+}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='TEXTAREA'){e.preventDefault();e.target.blur()}});
 document.addEventListener('input',e=>{
   const t=e.target,d=t.dataset;if(t.type==='checkbox')return;
@@ -357,11 +366,7 @@ document.addEventListener('change',e=>{
   if(t.id==='f_date'){if(t.value){S.date=t.value;rLog()}return}
   if(d.act==='meso'){S.mi=+t.value;S.wk=0;S.dy=0;const M=curM();M.weeks.forEach((w,i)=>{if(w.start&&w.start<=today())S.wk=i});rTrain();return}
   if(t.type==='checkbox'&&d.f==='main'){curW().days[S.dy].main[+d.r][d.k]=t.checked;save();d.k==='b'?rTrain():refreshCalc();return}
-  if(t.id==='imp'&&t.files[0]){const fr=new FileReader();fr.onload=()=>{
-    try{const j=JSON.parse(fr.result);if(!j||(!Array.isArray(j.mesos)&&!j.nut))throw 0;
-      if(!confirm('Replace ALL data on this device with the file?'))return;
-      DB={v:j.v||0,comp:j.comp??null,nut:j.nut||{},mesos:j.mesos||[],estF:fixF(j.estF)};persist();init();toast('Imported')}
-    catch(x){toast('That file is not a valid export.',1)}};fr.readAsText(t.files[0]);t.value=''}
+  if(t.id==='imp'&&t.files[0]){const fr=new FileReader();fr.onload=()=>importText(fr.result);fr.readAsText(t.files[0]);t.value=''}
 });
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act],[data-tab]');if(!b)return;const d=b.dataset;
@@ -389,6 +394,7 @@ document.addEventListener('click',e=>{
     case'addweek':{if(!M||!M.weeks.length)break;const last=M.weeks[M.weeks.length-1],w=clone(last);clearWeek(w,{rpe:1,notes:1});
       w.title='Week '+(M.weeks.length+1);w.start=last.start?addD(last.start,7):'';M.weeks.push(w);save();S.wk=M.weeks.length-1;S.dy=0;showTab('train');break}
     case'delmeso':if(M&&confirm('Delete "'+M.name+'" permanently?')){DB.mesos.splice(S.mi,1);save();init()}break;
+    case'pasteimp':importText($('#pasteJson').value);break;
     case'exp':{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));
       a.download='training-backup-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);break}
   }
