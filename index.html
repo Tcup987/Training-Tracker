@@ -85,13 +85,12 @@ const n=v=>{const x=parseFloat(v);return isFinite(x)?x:null};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const COL={squat:'#6AA9E6',bench:'#F0766B',deadlift:'#D9B35A'},LIFTS=['squat','bench','deadlift'];
 const cap=s=>s[0].toUpperCase()+s.slice(1);
-const DEF_F=0.94;                                   // single estimate factor
-const fixF=f=>f==null||Math.abs(f-0.97*0.94)<1e-6?DEF_F:f;   // old two-part default -> 0.94
+const RANGE_LO=0.95,RANGE_HI=1.02;                 // low / high multipliers for the load range
 
 /* ---------- storage ---------- */
 let DB;try{DB=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 DB=DB||{v:2,comp:null,nut:{},mesos:[]};
-DB.estF=fixF(DB.estF);
+delete DB.estF;                                     // factor removed
 let tm;const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(DB));return true}catch(e){toast('Could not save (storage full or blocked). Export a backup.',1);return false}};
 const save=()=>{clearTimeout(tm);tm=setTimeout(persist,200)};
 addEventListener('pagehide',()=>{try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){}});
@@ -139,14 +138,14 @@ function calcWeek(w){
 function prevMax(mi,l){const P=DB.mesos[mi-1];if(!P)return null;let b=null;
   P.weeks.forEach(w=>{const v=calcWeek(w).e[l];if(v&&(b==null||v>b))b=v});return b}
 const tmax=(mi,l)=>n(DB.mesos[mi]?.tm?.[l])??prevMax(mi,l);
-// Load range for a top set: max x RPE% x factor x relative intensity, rounded to 2.5
+// Load range for a top set: max x RPE% x relative intensity x (0.95 low, 1.02 high), rounded to 2.5
 function estRange(TM,r){
   if(!r||r.b)return null;
   const lift=liftOf(r.m),tmv=lift&&TM[lift];if(!tmv)return null;
   const rpe=avgN(r.g);if(rpe==null)return null;
   const p=pct(Math.round(rpe*2)/2,r.r);if(!p)return null;
-  const rel=nums(r.x),lo=(rel.length?Math.min(...rel):100)/100,hi=(rel.length?Math.max(...rel):100)/100,base=tmv*p*DB.estF;
-  return[mr(base*lo),mr(base*hi)];
+  const rel=nums(r.x),lo=(rel.length?Math.min(...rel):100)/100,hi=(rel.length?Math.max(...rel):100)/100,base=tmv*p;
+  return[mr(base*lo*RANGE_LO),mr(base*hi*RANGE_HI)];
 }
 
 function bio(){
@@ -247,7 +246,7 @@ function dayHtml(D){
   return`<div class="day-title"><input data-f="day" data-k="title" value="${esc(D.title)}" placeholder="Day title"></div>
   <div class="sub">Main lifts</div><div class="panel scroll"><table>${head(MC)}${main}</table></div><button class="quiet" data-act="addrow" data-f="main">+ Main lift</button>
   <div class="sub">Accessories</div><div class="panel scroll"><table>${head(AC)}${acc}</table></div><button class="quiet" data-act="addrow" data-f="acc">+ Accessory</button>
-  <p class="hint"><b>Load</b> is the one weight you enter: it drives back-offs, intensity and E1RM. <b>Range</b> = training max × RPE % × factor × Rel % (comp = 100, pause squat 90-95). Tick <b>E1RM</b> on the top sets that count toward the week's E1RM. Tick <b>Back</b> for rows calculated from the top set above (type their intensity, e.g. 0.72).</p>`;
+  <p class="hint"><b>Load</b> is the one weight you enter: it drives back-offs, intensity and E1RM. <b>Range</b> = training max × RPE % × Rel % (comp = 100, pause squat 90-95), shown as low–high (× 0.95 to × 1.02). Tick <b>E1RM</b> on the top sets that count toward the week's E1RM. Tick <b>Back</b> for rows calculated from the top set above (type their intensity, e.g. 0.72).</p>`;
 }
 function rTrain(){
   const el=$('#tab-train'),M=curM();
@@ -255,9 +254,8 @@ function rTrain(){
   S.wk=Math.min(S.wk,M.weeks.length-1);const W=M.weeks[S.wk];S.dy=Math.min(S.dy,Math.max(W.days.length-1,0));const D=W.days[S.dy];
   el.innerHTML=`<div class="row"><label>Mesocycle<select data-act="meso">${DB.mesos.map((m,i)=>`<option value="${i}" ${i===S.mi?'selected':''}>${esc(m.name)}</option>`).reverse().join('')}</select></label></div>
   <div class="panel" style="margin-top:12px"><div class="row"><b>Training max (kg)</b>
-  ${LIFTS.map(l=>`<label>${cap(l)}<input data-tm="${l}" inputmode="decimal" size="6" placeholder="${prevMax(S.mi,l)??'–'}" value="${esc(M.tm?.[l]??'')}"></label>`).join('')}
-  <label>Factor<input data-estf="1" inputmode="decimal" size="5" value="${+DB.estF.toFixed(4)}"></label></div>
-  <p class="hint">Leave a max blank to use the best E1RM from the previous mesocycle (shown greyed). Factor is a single multiplier on max × RPE % (e.g. 0.94).</p></div>
+  ${LIFTS.map(l=>`<label>${cap(l)}<input data-tm="${l}" inputmode="decimal" size="6" placeholder="${prevMax(S.mi,l)??'–'}" value="${esc(M.tm?.[l]??'')}"></label>`).join('')}</div>
+  <p class="hint">Leave a max blank to use the best E1RM from the previous mesocycle (shown greyed).</p></div>
   <div class="seg" id="weekSeg"></div>
   <div class="week"><label class="title"><input data-f="wk" data-k="title" value="${esc(W.title)}"></label>
   <label>Week starts<input type="date" data-f="wk" data-k="start" value="${W.start||''}"></label><div class="e1" id="e1box"></div></div>
@@ -340,7 +338,7 @@ addEventListener('resize',()=>{if(S.tab==='progress')rProgress()});
 function importText(txt){
   try{const j=JSON.parse(String(txt).replace(/^\uFEFF/,'').trim());if(!j||(!Array.isArray(j.mesos)&&!j.nut))throw 0;
     if(!confirm('Replace ALL data on this device with this backup?'))return;
-    DB={v:j.v||0,comp:j.comp??null,nut:j.nut||{},mesos:j.mesos||[],estF:fixF(j.estF)};persist();init();toast('Imported')}
+    DB={v:j.v||0,comp:j.comp??null,nut:j.nut||{},mesos:j.mesos||[]};persist();init();toast('Imported')}
   catch(x){toast('That is not a valid export.',1)}
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='TEXTAREA'){e.preventDefault();e.target.blur()}});
@@ -354,7 +352,6 @@ document.addEventListener('input',e=>{
     if(!Object.keys(o).length)delete DB.nut[S.date];
     save();updCal();rBioSoon();return}
   if(d.tm){const M=curM();(M.tm=M.tm||{})[d.tm]=t.value;save();refreshCalc();return}
-  if(d.estf){const v=n(t.value);if(v>0){DB.estF=v;save();refreshCalc()}return}
   const W=curW();if(!W||!d.f)return;
   if(d.f==='wk'){W[d.k]=t.value;if(d.k==='start')rWeekSeg()}
   else if(d.f==='day')W.days[S.dy].title=t.value;
