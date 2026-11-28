@@ -334,9 +334,9 @@ function rProgress(){
   LIFTS.forEach(l=>chart('c_'+l,[{p:P.filter(r=>r[l]).map(r=>[r.d,r[l]]),color:COL[l],dots:true}],{mult:2.5}));
   chart('c_vol',[{p:P.filter(r=>r.vol).map(r=>[r.d,r.vol]),color:'#3DDC84',dots:true}]);
   chart('c_it',[{p:P.filter(r=>r.it).map(r=>[r.d,r.it]),color:'#E6EFEA',dots:true}]);
-  chart('c_bw',[{p:B.filter(r=>r.avgA).map(r=>[r.d,r.avgA]),color:'#3DDC84'}]);
+  chart('c_bw',[{p:B.filter(r=>r.avgA).map(r=>[r.d,r.avgA]),color:'#3DDC84'}],{min:90,max:98,step:2});
   chart('c_bwraw',[{name:'AM',p:B.filter(r=>r.am).map(r=>[r.d,r.am]),color:'#3DDC84',line:false,dots:true,r:1.5},
-    {name:'PM',p:B.filter(r=>r.pm).map(r=>[r.d,r.pm]),color:'#6AA9E6',line:false,dots:true,r:1.5}]);
+    {name:'PM',p:B.filter(r=>r.pm).map(r=>[r.d,r.pm]),color:'#6AA9E6',line:false,dots:true,r:1.5}],{min:90,max:98,step:2});
   chart('c_cal',[{name:'Daily',p:B.filter(r=>r.cal).map(r=>[r.d,r.cal]),color:'#6B7F75',line:false,dots:true,r:1.5},
     {name:'7-day avg',p:B.filter(r=>r.avgC).map(r=>[r.d,r.avgC]),color:'#E6EFEA'},
     {name:'Est. maintenance avg',p:B.filter(r=>r.mAvg).map(r=>[r.d,r.mAvg]),color:'#F0766B'}],{min:2000,max:5000,step:500});
