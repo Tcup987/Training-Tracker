@@ -152,7 +152,7 @@ function bio(){
   const ds=Object.keys(DB.nut).sort();if(!ds.length)return[];
   const days=[];for(let d=ds[0];d<=ds[ds.length-1];d=addD(d,1))days.push(d);
   const cal=days.map(d=>{const x=DB.nut[d]||{};return(n(x.f)||0)*9+(n(x.c)||0)*4+(n(x.p)||0)*4||null});
-  const am=days.map(d=>n((DB.nut[d]||{}).am)||null);
+  const am=days.map(d=>n((DB.nut[d]||{}).am)||null),pm=days.map(d=>n((DB.nut[d]||{}).pm)||null);
   const avg=(a,i,lo,hi)=>{const v=a.slice(Math.max(0,i+lo),i+hi+1).filter(x=>x!=null);return v.length?v.reduce((s,x)=>s+x,0)/v.length:null};
   const slope=y=>{const m=y.length,xm=(m+1)/2,ym=y.reduce((a,b)=>a+b,0)/m;let a=0,b=0;y.forEach((v,i)=>{a+=(i+1-xm)*(v-ym);b+=(i+1-xm)**2});return a/b};
   const avgC=cal.map((v,i)=>v!=null?avg(cal,i,-3,3):null);
@@ -160,7 +160,7 @@ function bio(){
   const rate=days.map((_,i)=>{if(am[i]==null)return null;const y=avgA.slice(Math.max(0,i-3),i+4).filter(x=>x!=null);return y.length>1?slope(y)*7:null});
   const maint=days.map((_,i)=>avgA[i]!=null&&cal[i]!=null&&rate[i]!=null?avgC[i]-rate[i]*1100:null);
   const mAvg=days.map((_,i)=>maint[i]!=null?avg(maint,i,-9,10):null);
-  return days.map((d,i)=>({d,cal:cal[i],avgC:avgC[i],am:am[i],avgA:avgA[i],rate:rate[i],maint:maint[i],mAvg:mAvg[i]}));
+  return days.map((d,i)=>({d,cal:cal[i],avgC:avgC[i],am:am[i],pm:pm[i],avgA:avgA[i],rate:rate[i],maint:maint[i],mAvg:mAvg[i]}));
 }
 
 function progRows(){
@@ -172,7 +172,7 @@ function progRows(){
 /* ---------- state ---------- */
 const mrow=()=>({m:'',v:'',s:'',r:'',g:'',x:'',l:'',rpe:'',i:'',e:false,b:false}),arow=()=>({m:'',s:'',r:'',l:'',g:'',n:''});
 const newDay=()=>({title:'',main:[mrow()],acc:[arow()]});
-const S={tab:'log',date:today(),mi:0,wk:0,dy:0};
+const S={tab:'log',date:today(),mi:0,wk:0,dy:0,rc:{reps:'',rpe:'',max:''}};
 const curM=()=>DB.mesos[S.mi],curW=()=>curM()?.weeks[S.wk];
 
 // One-time upgrade: older data had no E1RM ticks, so tick the last "Comp" top set per lift each week
@@ -248,9 +248,32 @@ function dayHtml(D){
   <div class="sub">Accessories</div><div class="panel scroll"><table>${head(AC)}${acc}</table></div><button class="quiet" data-act="addrow" data-f="acc">+ Accessory</button>
   <p class="hint"><b>Load</b> is the one weight you enter: it drives back-offs, intensity and E1RM. <b>Range</b> = training max × RPE % × Rel % (comp = 100, pause squat 90-95), shown as low–high (× 0.95 to × 1.02). Tick <b>E1RM</b> on the top sets that count toward the week's E1RM. Tick <b>Back</b> for rows calculated from the top set above (type their intensity, e.g. 0.72).</p>`;
 }
+/* ---------- RPE calculator (bottom of Training tab) ---------- */
+// "5" -> [5]; "3x5" -> [5,5,5] (sets x reps); "5,4,3" -> [5,4,3]
+function parseScheme(s){
+  const out=[];String(s||'').toLowerCase().replace(/×/g,'x').split(/[,;\s\/]+/).filter(Boolean).forEach(tok=>{
+    const m=tok.match(/^(\d+)x(\d+)$/);
+    if(m){for(let i=0;i<Math.min(+m[1],20);i++)out.push(+m[2])}else{const v=parseInt(tok,10);if(isFinite(v))out.push(v)}});
+  return out;
+}
+const rcHtml=()=>`<div class="panel" style="margin-top:18px"><h2>RPE calculator</h2>
+  <div class="row"><label>Rep scheme<input id="rc_reps" placeholder="5, 3x5 or 5,4,3" size="12" value="${esc(S.rc.reps)}"></label>
+  <label>RPE<input id="rc_rpe" inputmode="decimal" placeholder="e.g. 8" size="5" value="${esc(S.rc.rpe)}"></label>
+  <label>Max (kg, optional)<input id="rc_max" inputmode="decimal" placeholder="optional" size="7" value="${esc(S.rc.max)}"></label></div>
+  <div id="rc_out" class="scroll" style="margin-top:10px"></div>
+  <p class="hint">Intensity is the fraction of 1RM from your RPE table (reps 1-10, RPE in 0.5 steps). "3x5" means 3 sets of 5. With a max entered, loads are rounded to 2.5.</p></div>`;
+function rcUpdate(){
+  const out=$('#rc_out');if(!out)return;
+  S.rc={reps:$('#rc_reps').value,rpe:$('#rc_rpe').value,max:$('#rc_max').value};
+  const sch=parseScheme(S.rc.reps),rpe=n(S.rc.rpe),mx=n(S.rc.max);
+  if(!sch.length||rpe==null){out.innerHTML='';return}
+  const seen=new Map();sch.forEach(r=>seen.set(r,(seen.get(r)||0)+1));
+  out.innerHTML='<table><tr><th>Reps</th><th>Sets</th><th class="n">Intensity</th><th class="n">%</th>'+(mx?'<th class="n">Load</th>':'')+'</tr>'+
+    [...seen].map(([r,c])=>{const p=pct(rpe,r);return`<tr><td>${r}</td><td>${c}</td><td class="n">${p?p.toFixed(3):'–'}</td><td class="n">${p?(p*100).toFixed(1)+'%':'not in table'}</td>${mx?`<td class="n">${p?mr(mx*p):'–'}</td>`:''}</tr>`}).join('')+'</table>';
+}
 function rTrain(){
   const el=$('#tab-train'),M=curM();
-  if(!M){el.innerHTML='<p class="empty">No mesocycle yet. Open Program to import your data or start a blank one.</p>';return}
+  if(!M){el.innerHTML='<p class="empty">No mesocycle yet. Open Program to import your data or start a blank one.</p>'+rcHtml();rcUpdate();return}
   S.wk=Math.min(S.wk,M.weeks.length-1);const W=M.weeks[S.wk];S.dy=Math.min(S.dy,Math.max(W.days.length-1,0));const D=W.days[S.dy];
   el.innerHTML=`<div class="row"><label>Mesocycle<select data-act="meso">${DB.mesos.map((m,i)=>`<option value="${i}" ${i===S.mi?'selected':''}>${esc(m.name)}</option>`).reverse().join('')}</select></label></div>
   <div class="panel" style="margin-top:12px"><div class="row"><b>Training max (kg)</b>
@@ -260,8 +283,8 @@ function rTrain(){
   <div class="week"><label class="title"><input data-f="wk" data-k="title" value="${esc(W.title)}"></label>
   <label>Week starts<input type="date" data-f="wk" data-k="start" value="${W.start||''}"></label><div class="e1" id="e1box"></div></div>
   <div class="seg">${W.days.map((d,i)=>`<button data-act="dy" data-i="${i}" aria-pressed="${i===S.dy}">Day ${i+1}</button>`).join('')}<button data-act="addday">+ Day</button></div>
-  <div>${D?dayHtml(D):'<p class="empty">No days in this week. Add one.</p>'}</div>`;
-  rWeekSeg();refreshCalc();el.querySelectorAll('textarea').forEach(fit);
+  <div>${D?dayHtml(D):'<p class="empty">No days in this week. Add one.</p>'}</div>${rcHtml()}`;
+  rWeekSeg();refreshCalc();el.querySelectorAll('textarea').forEach(fit);rcUpdate();
 }
 function rWeekSeg(){const M=curM();if(!M||!$('#weekSeg'))return;
   $('#weekSeg').innerHTML=M.weeks.map((w,i)=>`<button data-act="wk" data-i="${i}" aria-pressed="${i===S.wk}">Week ${i+1}${w.start?`<small>${fd(w.start)}</small>`:''}</button>`).join('')}
@@ -307,30 +330,45 @@ function rProgress(){
   const ch=(id,t)=>`<h3>${t}</h3><div class="panel"><div id="${id}"></div></div>`;
   el.innerHTML=`<div class="tiles">${LIFTS.map(best).join('')}</div><h3>Estimated 1RM</h3>
   <div class="three">${LIFTS.map(l=>`<div class="panel"><div class="sub" style="margin-top:0">${cap(l)}</div><div id="c_${l}"></div></div>`).join('')}</div>
-  ${ch('c_vol','Weekly volume (S+B+D reps)')}${ch('c_it','Average intensity')}${ch('c_bw','Body weight (7-day avg AM)')}${ch('c_cal','Calories and estimated maintenance')}${ch('c_rate','Rate of change (kg / week)')}`;
-  LIFTS.forEach(l=>chart('c_'+l,[{p:P.filter(r=>r[l]).map(r=>[r.d,r[l]]),color:COL[l],dots:true}]));
+  ${ch('c_vol','Weekly volume (S+B+D reps)')}${ch('c_it','Average intensity')}${ch('c_bw','Body weight (7-day avg AM)')}${ch('c_bwraw','Body weight (daily AM / PM, unaveraged)')}${ch('c_cal','Calories and estimated maintenance')}${ch('c_rate','Rate of change (kg / week)')}`;
+  LIFTS.forEach(l=>chart('c_'+l,[{p:P.filter(r=>r[l]).map(r=>[r.d,r[l]]),color:COL[l],dots:true}],{mult:2.5}));
   chart('c_vol',[{p:P.filter(r=>r.vol).map(r=>[r.d,r.vol]),color:'#3DDC84',dots:true}]);
   chart('c_it',[{p:P.filter(r=>r.it).map(r=>[r.d,r.it]),color:'#E6EFEA',dots:true}]);
   chart('c_bw',[{p:B.filter(r=>r.avgA).map(r=>[r.d,r.avgA]),color:'#3DDC84'}]);
+  chart('c_bwraw',[{name:'AM',p:B.filter(r=>r.am).map(r=>[r.d,r.am]),color:'#3DDC84',line:false,dots:true},
+    {name:'PM',p:B.filter(r=>r.pm).map(r=>[r.d,r.pm]),color:'#6AA9E6',line:false,dots:true}]);
   chart('c_cal',[{name:'Daily',p:B.filter(r=>r.cal).map(r=>[r.d,r.cal]),color:'#6B7F75',line:false,dots:true},
     {name:'7-day avg',p:B.filter(r=>r.avgC).map(r=>[r.d,r.avgC]),color:'#E6EFEA'},
-    {name:'Est. maintenance avg',p:B.filter(r=>r.mAvg).map(r=>[r.d,r.mAvg]),color:'#F0766B'}]);
-  chart('c_rate',[{p:B.filter(r=>r.rate!=null).map(r=>[r.d,r.rate]),color:'#3DDC84'}]);
+    {name:'Est. maintenance avg',p:B.filter(r=>r.mAvg).map(r=>[r.d,r.mAvg]),color:'#F0766B'}],{min:2000,max:5000,step:500});
+  chart('c_rate',[{p:B.filter(r=>r.rate!=null).map(r=>[r.d,r.rate]),color:'#3DDC84'}],{min:-1.5,max:1.5,step:.5,zero:true});
 }
 function chart(id,series,o={}){
   const el=$('#'+id),all=series.flatMap(s=>s.p);
   if(!all.length){el.innerHTML='<p class="empty">No data yet.</p>';return}
-  const W=Math.max(el.clientWidth,260),H=o.h||190,L=44,R=10,T=8,B=24,t=p=>Date.parse(p[0]+'T00:00');
-  const xs=all.map(t),x0=Math.min(...xs),x1=Math.max(...xs);let y0=Math.min(...all.map(p=>p[1])),y1=Math.max(...all.map(p=>p[1]));
-  const pad=(y1-y0||Math.abs(y1)*.05||1)*.1;y0-=pad;y1+=pad;
-  const X=v=>L+(x1===x0?.5:(v-x0)/(x1-x0))*(W-L-R),Y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B);
-  let g='';for(let i=0;i<=4;i++){const v=y0+(y1-y0)*i/4,y=Y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="#26332D"/><text x="${L-6}" y="${y+4}" text-anchor="end" fill="#8FA39A" font-size="11">${Math.abs(v)<10?v.toFixed(2):Math.round(v)}</text>`}
-  [x0,(x0+x1)/2,x1].forEach((v,i)=>{g+=`<text x="${X(v)}" y="${H-6}" text-anchor="${i===0?'start':i===2?'end':'middle'}" fill="#8FA39A" font-size="11">${fdm(v)}</text>`});
+  const W=Math.max(el.clientWidth,260),H=o.h||200,L=46,R=10,T=8,B=24,t=p=>Date.parse(p[0]+'T00:00');
+  const xs=all.map(t),x0=Math.min(...xs),x1=Math.max(...xs),vs=all.map(p=>p[1]),lo=Math.min(...vs),hi=Math.max(...vs);
+  // Y axis: fixed bounds if given, else round steps (multiples of o.mult if set, else 1/2/5 x 10^k)
+  let y0,y1,step;
+  if(o.min!=null&&o.max!=null){y0=o.min;y1=o.max;step=o.step||(y1-y0)/4}
+  else{
+    const span=hi-lo||Math.abs(hi)*.1||1;
+    if(o.mult)step=[1,2,4,8,10,20,40].map(k=>k*o.mult).find(c=>span/c<=5)||o.mult*40;
+    else{const raw=span/4,mag=10**Math.floor(Math.log10(raw)),f=raw/mag;step=(f<=1?1:f<=2?2:f<=5?5:10)*mag}
+    y0=Math.floor(lo/step+1e-9)*step;y1=Math.ceil(hi/step-1e-9)*step;if(y1<=y0)y1=y0+step;
+  }
+  const X=v=>L+(x1===x0?.5:(v-x0)/(x1-x0))*(W-L-R),Y=v=>T+(1-(v-y0)/(y1-y0))*(H-T-B),cid='cp_'+id;
+  let g='';const nt=Math.round((y1-y0)/step);
+  for(let i=0;i<=nt;i++){const v=y0+i*step,y=Y(v);
+    g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="${o.zero&&Math.abs(v)<1e-9?'#4A5F55':'#26332D'}"/><text x="${L-6}" y="${y+4}" text-anchor="end" fill="#8FA39A" font-size="11">${+v.toFixed(3)}</text>`}
+  const nx=x1===x0?0:(W>480?4:2);
+  for(let i=0;i<=nx;i++){const v=x0+(x1-x0)*(nx?i/nx:.5);
+    g+=`<text x="${X(v)}" y="${H-6}" text-anchor="${nx===0||(i>0&&i<nx)?'middle':i===0?'start':'end'}" fill="#8FA39A" font-size="11">${fdm(v)}</text>`}
+  let sg='';
   series.forEach(s=>{const pts=s.p.map(p=>[X(t(p)),Y(p[1])]);
-    if(s.line!==false&&pts.length>1)g+=`<path d="M${pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
-    if(s.dots||pts.length===1)pts.forEach(p=>g+=`<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${s.color}"/>`)});
+    if(s.line!==false&&pts.length>1)sg+=`<path d="M${pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')}" fill="none" stroke="${s.color}" stroke-width="2.5"/>`;
+    if(s.dots||pts.length===1)pts.forEach(p=>sg+=`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${s.r||3.5}" fill="${s.color}"/>`)});
   const leg=series.length>1?`<div class="leg">${series.map(s=>`<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}</div>`:'';
-  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${g}</svg>${leg}`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}"><defs><clipPath id="${cid}"><rect x="${L-4}" y="${T-4}" width="${W-L-R+8}" height="${H-T-B+8}"/></clipPath></defs>${g}<g clip-path="url(#${cid})">${sg}</g></svg>${leg}`;
 }
 addEventListener('resize',()=>{if(S.tab==='progress')rProgress()});
 
@@ -344,6 +382,7 @@ function importText(txt){
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='TEXTAREA'){e.preventDefault();e.target.blur()}});
 document.addEventListener('input',e=>{
   const t=e.target,d=t.dataset;if(t.type==='checkbox')return;
+  if(t.id&&t.id.startsWith('rc_')){rcUpdate();return}
   if(t.tagName==='TEXTAREA'){if(/\n/.test(t.value))t.value=t.value.replace(/\n/g,' ');fit(t)}
   if(d.n){
     if(d.n==='comp'){DB.comp=n(t.value);save();rBioSoon();return}
